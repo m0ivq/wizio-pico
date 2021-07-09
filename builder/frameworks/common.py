@@ -34,7 +34,9 @@ def ini_file(env):
     f = open(ini, "a+")
     if 'monitor_port'  not in txt: f.write("\n;monitor_port = SERIAL_PORT\n")
     if 'monitor_speed' not in txt: f.write(";monitor_speed = 115200\n")
-    if 'build_flags'   not in txt: f.write("\n;build_flags = \n")
+    if 'build_flags'   not in txt: f.write("\n;build_flags = -D PICO_STDIO_USB\n")
+    if 'build_unflags' not in txt: f.write("\n;build_unflags = -D PICO_STDIO_UART\n")
+    if 'board_build.pio' not in txt: f.write("\n;board_build.pio = \n")
     if 'lib_deps'      not in txt: f.write("\n;lib_deps = \n")
     f.close()
 
