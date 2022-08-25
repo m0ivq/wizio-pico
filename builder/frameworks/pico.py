@@ -1,4 +1,4 @@
-# WizIO 2021 Georgi Angelov
+# WizIO 2022 Georgi Angelov
 #   http://www.wizio.eu/
 #   https://github.com/Wiz-IO/wizio-pico
 
@@ -6,28 +6,20 @@ from os.path import join
 from SCons.Script import DefaultEnvironment, Builder
 from platformio.builder.tools.piolib import PlatformIOLibBuilder
 
-
-# SDK >= 1.2 : LIB_PICO_STDIO_FOO
-# SDK  < 1.2 : PICO_STDIO_FOO
-# this add both keys...
-def fix_old_new_stdio(env):
+def add_ops(env):
     if "PICO_STDIO_UART" in env.get("CPPDEFINES"):
         env.Append( CPPDEFINES = [ "LIB_PICO_STDIO_UART"] )
     if "LIB_PICO_STDIO_UART" in env.get("CPPDEFINES"):
         env.Append( CPPDEFINES = [ "PICO_STDIO_UART"] )
-
     if "PICO_STDIO_USB" in env.get("CPPDEFINES"):
         env.Append( CPPDEFINES = [ "LIB_PICO_STDIO_USB"] )
     if "LIB_PICO_STDIO_USB" in env.get("CPPDEFINES"):
         env.Append( CPPDEFINES = [ "PICO_STDIO_USB"] )
-
     if "PICO_STDIO_SEMIHOSTING" in env.get("CPPDEFINES"):
         env.Append( CPPDEFINES = [ "LIB_PICO_STDIO_SEMIHOSTING"] )
     if "LIB_PICO_STDIO_SEMIHOSTING" in env.get("CPPDEFINES"):
         env.Append( CPPDEFINES = [ "PICO_STDIO_SEMIHOSTING"] )
 
-
-def add_ops(env):
     tab = '  *'
     OBJ_DIR = join( "$BUILD_DIR", env.platform, env.sdk, "pico" )
     LIB_DIR  = join( env.framework_dir, env.sdk, "pico" )
@@ -236,15 +228,15 @@ def add_ops(env):
         env.BuildSources( join(OBJ_DIR, "pico_stdio"), join(LIB_DIR, "pico_stdio") )
 
     if "PICO_STDIO_USB" in env.get("CPPDEFINES"):
-        print(tab, '* STDIO USB')
+        print(tab, 'STDIO        : USB')
         env.BuildSources( join(OBJ_DIR, "pico_stdio_usb"), join(LIB_DIR, "pico_stdio_usb") )        
 
     if "PICO_STDIO_UART" in env.get("CPPDEFINES"):
-        print(tab, '* STDIO UART')
+        print(tab, 'STDIO        : UART')
         env.BuildSources( join(OBJ_DIR, "pico_stdio_uart"), join(LIB_DIR, "pico_stdio_uart") )
 
     if "PICO_STDIO_SEMIHOSTING" in env.get("CPPDEFINES"):
-        print(tab, '* STDIO SEMIHOSTING')
+        print(tab, 'STDIO        : SEMIHOSTING')
         env.BuildSources( join(OBJ_DIR, "pico_stdio_semihosting"), join(LIB_DIR, "pico_stdio_semihosting") )
 
     env.Append( LINKFLAGS = [
@@ -253,51 +245,53 @@ def add_ops(env):
         "-Wl,-wrap,free",
     ])
 
+
 def add_tinyusb(env):
     OBJ_DIR = join( "$BUILD_DIR", env.platform, env.sdk, "pico", "usb" )
     USB_DIR = join( env.framework_dir, env.sdk, "lib", "tinyusb", "src" )
     for define in env.get("CPPDEFINES"):
-        if "_USB" in define:
+        if "USB" in define:
             env.Append( CPPDEFINES = [ "CFG_TUSB_MCU=OPT_MCU_RP2040", "CFG_TUSB_OS=OPT_OS_PICO" ], CPPPATH = [ USB_DIR ]  )
-            env.BuildSources( OBJ_DIR, USB_DIR, src_filter = [ "+<*>", "-<host>", "-<device>", "-<class>" ] )
-            print('  * TINYUSB')
+            if "PICO_USB_HOST" in define: 
+                #[ini] build_flags = -D PICO_USB_HOST ... load lib as host      
+                print('  * TINYUSB      : HOST')
+                env.BuildSources( OBJ_DIR, USB_DIR, src_filter = [ "+<*>", "-<device>", "+<class>" ] )
+            else: 
+                #[ini] build_flags = -D PICO_USB_DEVICE / PICO_STDIO_USB ... load lib as device      
+                print('  * TINYUSB      : DEVICE')        
+                env.BuildSources( OBJ_DIR, USB_DIR, src_filter = [ "+<*>", "-<host>", "+<class>" ] )            
             break
 
-    if "PICO_STDIO_USB" in env.get("CPPDEFINES") or "LIB_PICO_STDIO_USB" in env.get("CPPDEFINES"):
-        env.BuildSources( OBJ_DIR, USB_DIR, src_filter = [ "-<*>", "+<device>", "+<class/cdc>" ]  )
-        return
-
-    # TODO SELECT HOST/DEVICE CLASS
-    if "PICO_USB" in env.get("CPPDEFINES"):
-        env.BuildSources( OBJ_DIR, USB_DIR,
-            src_filter = [ "-<*>", "+<device>", "+<class>" ]
-        )
 
 def add_sdk(env):
     add_ops(env)
     add_tinyusb(env)
+    
     if 'ARDUINO' != env.get("PROGNAME"):
         new_delete = "+"
         pico_malloc = '+'
     else:
         new_delete = "-"
         pico_malloc = '-'
+
     filter = [ "+<*>",
-        "-<lib>",
-        "-<boot_stage2>",
-        "-<pico/pico_bit_ops>",
-        "-<pico/pico_divider>",
-        "-<pico/pico_int64_ops>",
-        "-<pico/pico_printf>",
-        "-<pico/pico_float>",
-        "-<pico/pico_double>",
-        "-<pico/pico_stdio>",
-        "-<pico/pico_stdio_usb>",
-        "-<pico/pico_stdio_uart>",
-        "-<pico/pico_stdio_semihosting>",
-        "-<pico/pico_mem_ops>",
-        "-<pico/pico_standard_link/crt0.S>",
-        new_delete + "<pico/pico_standard_link/new_delete.cpp>",
-        pico_malloc + "<pico/pico_malloc>"
+            "-<lib>",
+            "-<boot_stage2>",
+            "-<pico/pico_cyw43_arch>",
+            "-<pico/pico_lwip>",
+            "-<pico/pico_bit_ops>",
+            "-<pico/pico_divider>",
+            "-<pico/pico_int64_ops>",
+            "-<pico/pico_printf>",
+            "-<pico/pico_float>",
+            "-<pico/pico_double>",
+            "-<pico/pico_stdio>",
+            "-<pico/pico_stdio_usb>",
+            "-<pico/pico_stdio_uart>",
+            "-<pico/pico_stdio_semihosting>",
+            "-<pico/pico_mem_ops>",
+            "-<pico/pico_standard_link/crt0.S>",
+            new_delete + "<pico/pico_standard_link/new_delete.cpp>",
+            pico_malloc + "<pico/pico_malloc>"
     ]
     env.BuildSources( join("$BUILD_DIR", env.platform, env.sdk), join(env.framework_dir, env.sdk), src_filter = filter )

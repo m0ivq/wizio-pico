@@ -1,4 +1,4 @@
-# WizIO 2021 Georgi Angelov
+# WizIO 2022 Georgi Angelov
 #   http://www.wizio.eu/
 #   https://github.com/Wiz-IO/wizio-pico
 
@@ -16,5 +16,5 @@ def dev_init(env, platform):
         CPPDEFINES = [ "BAREMETAL" ],
         CPPPATH    = [ join(env.framework_dir, env.sdk, "boards"), ]
     )
+    dev_config_board(env)
     dev_finalize(env)
-
