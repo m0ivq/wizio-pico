@@ -9,6 +9,10 @@ from colorama import Fore
 from wpioasm import dev_pioasm # https://github.com/Wiz-IO/wizio-pico/issues/98#issuecomment-1128747885
 
 env = DefaultEnvironment()
+env.Replace(
+    CXX="arm-none-eabi-g++",
+)
+
 print( '<<<<<<<<<<<< ' + env.BoardConfig().get("name").upper() + " 2021 Georgi Angelov >>>>>>>>>>>>" )
 
 dev_pioasm(env)
